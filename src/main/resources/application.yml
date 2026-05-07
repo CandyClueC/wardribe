@@ -42,8 +42,3 @@ mybatis-plus:
 logging:
   level:
     com.zk: info
-# 微信小程序配置
-wx:
-  miniapp:
-    appid: wx3715a8d5e75381fe      # 替换为你的 AppID
-    secret: 4bf5af3cb60344204eecae2e0fa97a49    # 替换为你的 AppSecret
