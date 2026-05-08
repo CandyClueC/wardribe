@@ -119,7 +119,10 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
                     .stream()
                     .map(Category::getId)
                     .toList();
-            queryWrapper.in(!categoryIds.isEmpty(), Item::getCategoryId, categoryIds);
+            if (categoryIds.isEmpty()){
+                return new ArrayList<>();
+            }
+            queryWrapper.in(Item::getCategoryId, categoryIds);
         }
 
         // 排序规则：按录入时间倒序（最新的排在最前面）
