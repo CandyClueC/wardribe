@@ -3,15 +3,18 @@ package com.zk.wardrobe.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.zk.wardrobe.dto.LookDTO;
+import com.zk.wardrobe.entity.Category;
 import com.zk.wardrobe.entity.Item;
 import com.zk.wardrobe.entity.Look;
 import com.zk.wardrobe.entity.LookItemRel;
 import com.zk.wardrobe.mapper.LookMapper;
+import com.zk.wardrobe.service.CategoryService;
 import com.zk.wardrobe.service.ItemService;
 import com.zk.wardrobe.service.LookItemRelService;
 import com.zk.wardrobe.service.LookService;
 import com.zk.wardrobe.utils.UserContext;
 import com.zk.wardrobe.vo.LookDetailVO;
+import com.zk.wardrobe.vo.LookListVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,9 @@ public class LookServiceImpl extends ServiceImpl<LookMapper, Look> implements Lo
 
     @Autowired
     private ItemService itemService;
+
+    @Autowired
+    private CategoryService categoryService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -126,12 +132,53 @@ public class LookServiceImpl extends ServiceImpl<LookMapper, Look> implements Lo
     }
 
     @Override
-    public List<Look> getLookList() {
+    public List<LookListVO> getLookList() {
         Long userId = UserContext.getUserId();
-        // 按创建时间倒序返回列表
-        return this.list(new LambdaQueryWrapper<Look>()
+
+        // 1. 查询该用户所有的穿搭记录
+        List<Look> looks = this.list(new LambdaQueryWrapper<Look>()
                 .eq(Look::getUserId, userId)
                 .orderByDesc(Look::getCreateTime));
+
+        if (looks.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 2. 遍历组装 VO，并提取 Tags
+        List<LookListVO> voList = new ArrayList<>();
+        for (Look look : looks) {
+            LookListVO vo = new LookListVO();
+            BeanUtils.copyProperties(look, vo);
+
+            // 查询该穿搭关联了哪些单品
+            List<LookItemRel> rels = lookItemRelService.list(
+                    new LambdaQueryWrapper<LookItemRel>().eq(LookItemRel::getLookId, look.getId())
+            );
+
+            List<String> tags = new ArrayList<>();
+            if (!rels.isEmpty()) {
+                // 拿到所有单品 ID
+                List<Long> itemIds = rels.stream().map(LookItemRel::getItemId).collect(Collectors.toList());
+                // 查出这些单品实体
+                List<Item> items = itemService.listByIds(itemIds);
+
+                // 提取单品所属的 categoryId (去重)
+                List<Long> categoryIds = items.stream()
+                        .map(Item::getCategoryId)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                // 根据 categoryId 查出分类名称（比如：连衣裙、草帽）
+                if (!categoryIds.isEmpty()) {
+                    List<Category> categories = categoryService.listByIds(categoryIds);
+                    tags = categories.stream().map(Category::getName).collect(Collectors.toList());
+                }
+            }
+            vo.setTags(tags);
+            voList.add(vo);
+        }
+
+        return voList;
     }
 
     @Override

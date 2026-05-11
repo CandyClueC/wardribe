@@ -94,4 +94,13 @@ public class ItemController {
     public Result<List<CategoryPriceVO>> getCategoryPriceStats() {
         return Result.success(itemService.getCategoryPriceStats());
     }
+
+    /**
+     * 导出我的衣橱数据到 Excel
+     */
+    @GetMapping("/export")
+    public Result<String> exportData() {
+        // 返回的是生成的 Excel 文件的下载链接
+        return Result.success(itemService.exportItems());
+    }
 }

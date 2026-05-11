@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.zk.wardrobe.dto.LookDTO;
 import com.zk.wardrobe.entity.Look;
 import com.zk.wardrobe.vo.LookDetailVO;
+import com.zk.wardrobe.vo.LookListVO;
 
 import java.util.List;
 
@@ -11,6 +12,6 @@ public interface LookService extends IService<Look> {
     void addLook(LookDTO lookDTO);
     void updateLook(LookDTO lookDTO);
     void deleteLook(Long id);
-    List<Look> getLookList();
+    List<LookListVO> getLookList();
     LookDetailVO getLookDetail(Long id);
 }

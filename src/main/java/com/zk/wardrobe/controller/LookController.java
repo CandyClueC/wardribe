@@ -5,6 +5,7 @@ import com.zk.wardrobe.entity.Look;
 import com.zk.wardrobe.service.LookService;
 import com.zk.wardrobe.utils.Result;
 import com.zk.wardrobe.vo.LookDetailVO;
+import com.zk.wardrobe.vo.LookListVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -44,10 +45,10 @@ public class LookController {
     }
 
     /**
-     * 获取我的穿搭列表
+     * 获取我的穿搭列表 (包含标签)
      */
     @GetMapping("/list")
-    public Result<List<Look>> getList() {
+    public Result<List<LookListVO>> getList() {
         return Result.success(lookService.getLookList());
     }
 

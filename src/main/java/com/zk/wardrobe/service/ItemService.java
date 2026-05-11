@@ -18,4 +18,6 @@ public interface ItemService extends IService<Item> {
     List<CategoryPriceVO> getCategoryPriceStats();
 
     Integer getTotalCount(Long categoryId);
+
+    String exportItems();
 }

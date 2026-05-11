@@ -76,6 +76,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         }
 
         category.setName(categoryDTO.getName());
+        category.setImageUrl(categoryDTO.getImageUrl());
         this.updateById(category);
     }
 

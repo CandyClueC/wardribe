@@ -1,5 +1,6 @@
 package com.zk.wardrobe.service.impl;
 
+import com.alibaba.excel.EasyExcel;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.zk.wardrobe.dto.ItemDTO;
@@ -10,13 +11,17 @@ import com.zk.wardrobe.service.CategoryService;
 import com.zk.wardrobe.service.ItemService;
 import com.zk.wardrobe.utils.UserContext;
 import com.zk.wardrobe.vo.CategoryPriceVO;
+import com.zk.wardrobe.vo.ItemExportVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -208,5 +213,65 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         List<Item> items = this.list(wrapper);
 
         return items.size();
+    }
+
+    @Override
+    public String exportItems() {
+        Long userId = UserContext.getUserId();
+
+        // 1. 查询该用户的所有单品 (按时间倒序)
+        List<Item> itemList = this.list(new LambdaQueryWrapper<Item>()
+                .eq(Item::getUserId, userId)
+                .orderByDesc(Item::getCreateTime));
+
+        // 2. 查出所有分类，做成一个 Map<ID, 名称> 方便后面匹配名字
+        List<Category> categories = categoryService.list(new LambdaQueryWrapper<Category>()
+                .eq(Category::getUserId, userId)
+                .or().eq(Category::getUserId, 0L)); // 包含系统预设娃娃
+        Map<Long, String> categoryMap = categories.stream()
+                .collect(Collectors.toMap(Category::getId, Category::getName));
+
+        // 3. 将数据库实体 (Item) 转换为 Excel 需要的格式 (ItemExportVO)
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        List<ItemExportVO> exportList = itemList.stream().map(item -> {
+            ItemExportVO vo = new ItemExportVO();
+            vo.setName(item.getName() != null ? item.getName() : "未命名");
+
+            // 匹配分类名称
+            vo.setCategoryName(categoryMap.getOrDefault(item.getCategoryId(), "未知分类"));
+            vo.setPrice(item.getPrice());
+
+            // 格式化时间戳 -> 易读的日期字符串
+            if (item.getPurchaseDate() != null) {
+                vo.setPurchaseDate(sdf.format(new Date(item.getPurchaseDate())));
+            }
+
+            // 翻译 Integer 状态为中文文本
+            vo.setIsShipped(item.getIsShipped() != null && item.getIsShipped() == 1 ? "已发货" : "未发货");
+            vo.setIsFinalPaid(item.getIsFinalPaid() != null && item.getIsFinalPaid() == 1 ? "已补" : "未补");
+
+            return vo;
+        }).collect(Collectors.toList());
+
+        // 4. 定义 Excel 文件的保存路径和文件名
+        // 【注意】这里假设你的静态资源存储在项目根目录下的 uploads 文件夹中
+        // 这必须与你之前写的 UploadController 存储图片的路径逻辑保持一致！
+        String fileName = "wardrobe_export_" + System.currentTimeMillis() + ".xlsx";
+        String dirPath = System.getProperty("user.dir") + "/uploads/";
+
+        File dir = new File(dirPath);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        String fullPath = dirPath + fileName;
+
+        // 5. 使用 EasyExcel 一行代码写出文件！
+        EasyExcel.write(fullPath, ItemExportVO.class)
+                .sheet("我的衣橱")
+                .doWrite(exportList);
+
+        // 6. 返回相对路径给前端下载 (前端会拼上 IMAGE_BASE_URL)
+        return fileName;
     }
 }
