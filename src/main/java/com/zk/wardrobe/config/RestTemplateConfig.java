@@ -3,6 +3,8 @@ package com.zk.wardrobe.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.BufferingClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
@@ -15,7 +17,9 @@ public class RestTemplateConfig {
 
     @Bean
     public RestTemplate restTemplate() {
-        RestTemplate restTemplate = new RestTemplate();
+        // BufferingClientHttpRequestFactory 确保请求体先缓冲再发送，
+        // 避免 HttpURLConnection 使用分块传输编码，兼容微信 API
+        RestTemplate restTemplate = new RestTemplate(new BufferingClientHttpRequestFactory(new SimpleClientHttpRequestFactory()));
 
         // 遍历所有的 HttpMessageConverter
         for (HttpMessageConverter<?> converter : restTemplate.getMessageConverters()) {

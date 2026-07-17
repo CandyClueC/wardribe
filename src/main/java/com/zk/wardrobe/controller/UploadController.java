@@ -1,8 +1,9 @@
 package com.zk.wardrobe.controller;
 
+import com.zk.wardrobe.service.WxContentSecurityService;
 import com.zk.wardrobe.utils.Result;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
@@ -11,6 +12,9 @@ import java.util.UUID;
 
 @RestController
 public class UploadController {
+
+    @Autowired
+    private WxContentSecurityService wxContentSecurityService;
 
     @PostMapping("/upload")
     public Result<String> upload(@RequestParam("file") MultipartFile file, HttpServletRequest request) {
@@ -28,7 +32,14 @@ public class UploadController {
                 return Result.error("仅支持 JPG/PNG 格式的图片");
             }
 
-            // 2. 生成全局唯一的全新文件名 (例如: f8a9e2b1-1234.png)
+            // 2. 内容安全审核
+            try {
+                wxContentSecurityService.checkImage(file.getBytes());
+            } catch (RuntimeException e) {
+                return Result.error(e.getMessage());
+            }
+
+            // 3. 生成全局唯一的全新文件名 (例如: f8a9e2b1-1234.png)
             String newFileName = UUID.randomUUID().toString().replace("-", "") + suffix;
 
             // 3. 构建物理存储路径，如果文件夹不存在则自动创建
